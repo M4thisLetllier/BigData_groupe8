@@ -3,6 +3,7 @@ library(leaflet)
 library(leaflet.extras)
 library(rnaturalearth)
 library(sf)
+df <- read.csv("BigData_groupe8/IRVE.csv", stringsAsFactors = FALSE, sep = ",")
 
 # =================================================================
 # 1. Charger le contour exact de la France métropolitaine

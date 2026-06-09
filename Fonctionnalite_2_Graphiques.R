@@ -1,161 +1,128 @@
-# Chargement des bibliothèques nécessaires pour la Fonctionnalité 2 de graphique 
+# ==============================================================================
+# FONCTIONNALITÉ 2 : VISUALISATION GRAPHIQUE 
+# ==============================================================================
+
 library(ggplot2)
 library(dplyr)
 
-# Importation temporaire du fichier brut en attendant le nettoyage de Victor 
-donnees_irve <- read.csv("IRVE.csv", sep=",", stringsAsFactors=TRUE)
+# 1. Chargement de la base
+donnees_irve <- read.csv("IRVE_brouillon_100k.csv", stringsAsFactors = FALSE)
 
-# Commande pour voir le taux de valeurs manquantes par colonne (en %) a metttre dans fonction 1 
-sapply(donnees_irve, function(x) sum(is.na(x) | x == "") / nrow(donnees_irve) * 100)
-
-# Nombre de données qu'on a en tout 
-dim(donnees_irve)
-
-# Pour lister les données 
-names(donnees_irve)
-
-# --- DEBUT DES GRAPHIQUES ---
-
-# --- 1. PARTS DE MARCHÉ DES OPÉRATEURS ---
-
-# Création d'un sous-tableau avec le Top 10 des opérateurs. 
-  top_operateurs <- donnees_irve %>%
-  filter(nom_operateur != "") %>%   # Pour faire le nettoyage de la case vide 4276 en attendant les données parfaitement traités
-  count(nom_operateur) %>%
+# ==============================================================================
+# GRAPHIQUE 1 : PARTS DE MARCHÉ DES OPÉRATEURS (Le Top 10)
+# ==============================================================================
+top_operateurs <- donnees_irve %>%
+  filter(!is.na(nom_operateur) & nom_operateur != "") %>% 
+  group_by(nom_operateur) %>%
+  summarise(n = n()) %>%
   top_n(10, n) %>%
-  arrange(desc(n))
+  pull(nom_operateur)
 
-# Création du graphique en barres horizontales
-graph_operateurs <- ggplot(top_operateurs, aes(x = reorder(nom_operateur, n), y = n)) +
-  geom_bar(stat = "identity", fill = "steelblue") +
-  coord_flip() + # Inverse les axes pour lire les noms longs sans qu'ils se chevauchent. 
-  theme_minimal() +
-  labs(title = "Parts de marché : Top 10 des opérateurs",
-       x = "Opérateur",
-       y = "Nombre de points de charge")
+df_top10 <- donnees_irve %>%
+  filter(nom_operateur %in% top_operateurs) %>%
+  mutate(gratuit = ifelse(gratuit == 1, "Gratuit", "Payant")) %>%
+  group_by(nom_operateur, gratuit) %>%
+  summarise(total = n(), .groups = 'drop')
 
+graph_operateurs <- ggplot(df_top10, aes(x = reorder(nom_operateur, total, sum), y = total, fill = gratuit)) +
+  geom_bar(stat = "identity", width = 0.7) +
+  coord_flip() + 
+  scale_fill_manual(values = c("Gratuit" = "#27ae60", "Payant" = "#2980b9")) + # Vert émeraude et Bleu corporate
+  theme_minimal(base_size = 13) + # Police légèrement plus grande
+  labs(title = "Top 10 des opérateurs du réseau public",
+       subtitle = "Répartition du parc selon le modèle économique",
+       x = NULL, y = "Nombre de points de charge", fill = NULL) +
+  theme(legend.position = "top", 
+        axis.text.y = element_text(face = "bold", color = "#2c3e50"),
+        plot.title = element_text(face = "bold"))
 
-# Affichage dans RStudio
 print(graph_operateurs)
-
-# Exportation obligatoire en PNG
-ggsave("parts_marche_operateurs.png", plot = graph_operateurs, width = 8, height = 6, dpi = 300)
+ggsave("parts_marche_operateurs_v2.png", plot = graph_operateurs, width = 9, height = 6, dpi = 300)
 
 
+# ==============================================================================
+# GRAPHIQUE 2 : RÉPARTITION DES PUISSANCES (Par Catégorie métier)
+# ==============================================================================
+df_puissance_cat <- donnees_irve %>%
+  filter(implantation_station %in% c("Parking public", "Voirie", "Station dédiée à la recharge rapide")) %>%
+  filter(!is.na(puissance_nominale)) %>%
+  mutate(categorie_puissance = case_when(
+    puissance_nominale < 22 ~ "1. Lente (< 22 kW)",
+    puissance_nominale == 22 ~ "2. Standard (22 kW)",
+    puissance_nominale > 22 & puissance_nominale <= 149 ~ "3. Rapide (23-149 kW)",
+    puissance_nominale >= 150 ~ "4. Ultra-Rapide (150+ kW)",
+    TRUE ~ "Autre"
+  )) %>%
+  filter(categorie_puissance != "Autre")
 
-# --- 2. RÉPARTITION DES PUISSANCES ---
+graph_puissance <- ggplot(df_puissance_cat, aes(x = categorie_puissance, fill = implantation_station)) +
+  # position = "dodge" met les barres côte à côte au lieu de les empiler
+  geom_bar(position = "dodge", color = "white", linewidth = 0.5) +
+  scale_fill_brewer(palette = "Set2") + # Palette très élégante
+  theme_minimal(base_size = 12) +
+  labs(title = "Analyse de la puissance selon le lieu d'implantation",
+       subtitle = "La voirie est dominée par le 22kW, la recharge rapide se fait en station.",
+       x = NULL, y = "Volume d'équipements", fill = "Type d'implantation :") +
+  theme(legend.position = "bottom", 
+        axis.text.x = element_text(face = "bold"),
+        plot.title = element_text(face = "bold"))
 
-# Sécurité : on s'assure que la colonne est bien lue comme un format numérique
-# A supprimer si les donnees nettoyer en fonctionnalités 1 sont bien traités 
-  donnees_irve$puissance_nominale <- as.numeric(as.character(donnees_irve$puissance_nominale))
-
-# Création de l'histogramme
-  graph_puissance <- ggplot(donnees_irve, aes(x = puissance_nominale)) +
-    
-  # On limite l'axe X (ex: 0 à 350 kW) pour éviter que les valeurs aberrantes n'écrasent le graphique
-  geom_histogram(fill = "darkorange", color = "black", binwidth = 22) +
-  xlim(0, 350) + 
-  theme_minimal() +
-  labs(title = "Répartition des puissances des points de charge",
-       x = "Puissance Nominale (kW)",
-       y = "Fréquence")
-
-# Affichage dans RStudio
 print(graph_puissance)
-
-# Exportation obligatoire en PNG
-ggsave("repartition_puissances.png", plot = graph_puissance, width = 8, height = 6, dpi = 300)
+ggsave("repartition_puissances_v2.png", plot = graph_puissance, width = 10, height = 6, dpi = 300)
 
 
-
-
-# --- 3. ÉVOLUTION TEMPORELLE DES MISES EN SERVICE ---
-
-# 1. Préparation et nettoyage des données temporelles
+# ==============================================================================
+# GRAPHIQUE 3 : ÉVOLUTION TEMPORELLE (Lissée)
+# ==============================================================================
 evolution_stations <- donnees_irve %>%
-  
-  # Sécurité : on force la conversion en texte pour éviter les erreurs de format (Facteurs)
-  mutate(date_texte = as.character(date_mise_en_service)) %>%
-  
-  # On supprime les lignes où la date n'est pas renseignée
-  filter(date_texte != "" & !is.na(date_texte)) %>%
-  mutate(
-    # On extrait uniquement les 10 premiers caractères (format AAAA-MM-JJ)
-    date_courte = substr(date_texte, 1, 10),
-    
-    # On convertit ce texte au format "Date" mathématique officiel de R
-    date_propre = as.Date(date_courte, format="%Y-%m-%d"),
-    
-    # On crée une étiquette "Année-Mois" pour pouvoir regrouper les données
-    annee_mois = format(date_propre, "%Y-%m")
-  ) %>%
-  # Nettoyage : on garde la période pertinente (2010) et on coupe à fin mai 2026 
-  # pour éviter l'effet de chute du mois en cours
-  
-  filter(date_propre >= as.Date("2010-01-01") & date_propre <= as.Date("2026-05-31")) %>%
-  
-  # On compte le nombre de nouvelles stations pour chaque mois et on trie chronologiquement
+  filter(!is.na(date_mise_en_service) & date_mise_en_service != "") %>%
+  mutate(date_propre = as.Date(substr(date_mise_en_service, 1, 10), format="%Y-%m-%d")) %>%
+  filter(date_propre >= as.Date("2015-01-01") & date_propre <= as.Date("2026-05-31")) %>% # Début à 2015 pour enlever le plat inutile
+  mutate(annee_mois = format(date_propre, "%Y-%m")) %>%
   count(annee_mois) %>%
-  arrange(annee_mois)
+  mutate(date_graphique = as.Date(paste0(annee_mois, "-01")))
 
-# 2. Préparation de l'axe X pour le graphique
-# R a besoin d'un jour précis pour tracer une courbe de temps. 
-# On fixe arbitrairement toutes les dates au 1er du mois.
-evolution_stations$date_graphique <- as.Date(paste0(evolution_stations$annee_mois, "-01"))
-
-# 3. Création du graphique
 graph_evolution <- ggplot(evolution_stations, aes(x = date_graphique, y = n)) +
-  
-  # Tracé de la courbe (l'argument 'linewidth' est utilisé selon les dernières normes de R)
-  geom_line(color = "forestgreen", linewidth = 1) + 
-  theme_minimal() +
-  labs(title = "Évolution des mises en service de stations IRVE (2010 - Mai 2026)",
-       x = "Année",
-       y = "Nouvelles stations par mois") +
-  
-  #  affichage de l'année (%Y) avec un espacement de 2 ans
-  scale_x_date(date_labels = "%Y", date_breaks = "2 years") +
-  
-  # Inclinaison du texte des années à 45 degrés pour éviter tout chevauchement visuel
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10))
+  geom_area(fill = "#bdc3c7", alpha = 0.4) + # Fond gris doux
+  geom_line(color = "#7f8c8d", alpha = 0.5) + # Ligne d'origine en filigrane
+  geom_smooth(method = "loess", span = 0.1, color = "#c0392b", linewidth = 1.2, se = FALSE) + # Tendance rouge forte
+  theme_minimal(base_size = 12) +
+  labs(title = "Dynamique de déploiement du réseau IRVE (2015 - 2026)",
+       subtitle = "En rouge : Courbe de tendance (Moyenne mobile des mises en service)",
+       x = NULL, y = "Nouvelles stations par mois") +
+  scale_x_date(date_labels = "%Y", date_breaks = "1 year") +
+  theme(plot.title = element_text(face = "bold"))
 
-# Affichage du résultat
 print(graph_evolution)
-
-# Exportation automatique au format PNG pour valider le livrable
-ggsave("evolution_mises_en_service.png", plot = graph_evolution, width = 10, height = 6, dpi = 300)
+ggsave("evolution_mises_en_service_v2.png", plot = graph_evolution, width = 10, height = 6, dpi = 300)
 
 
-
-
-# --- 4. RÉPARTITION DES TYPES DE PRISES ---
-
-# 1. Création d'un tableau récapitulatif des équipements
-# L'opérateur %in% permet de compter la présence d'une prise, que le fichier l'écrive "True", "true", "1" ou TRUE.
+# ==============================================================================
+# GRAPHIQUE 4 : RÉPARTITION DES TYPES DE PRISES (Avec Chiffres)
+# ==============================================================================
 tableau_prises <- data.frame(
-  Equipement = c("Type 2 (Standard)", "Prise Domestique (EF)", "Combo CCS (Rapide)", "CHAdeMO", "Autre"),
+  Equipement = c("Type 2 (Standard AC)", "Combo CCS (Rapide DC)", "Prise Domestique", "CHAdeMO", "Autre"),
   Nombre = c(
-    sum(donnees_irve$prise_type_2 %in% c("True", "TRUE", "true", 1, TRUE), na.rm = TRUE),
-    sum(donnees_irve$prise_type_ef %in% c("True", "TRUE", "true", 1, TRUE), na.rm = TRUE),
-    sum(donnees_irve$prise_type_combo_ccs %in% c("True", "TRUE", "true", 1, TRUE), na.rm = TRUE),
-    sum(donnees_irve$prise_type_chademo %in% c("True", "TRUE", "true", 1, TRUE), na.rm = TRUE),
-    sum(donnees_irve$prise_type_autre %in% c("True", "TRUE", "true", 1, TRUE), na.rm = TRUE)
+    sum(donnees_irve$prise_type_2 == 1, na.rm = TRUE),
+    sum(donnees_irve$prise_type_combo_ccs == 1, na.rm = TRUE),
+    sum(donnees_irve$prise_type_ef == 1, na.rm = TRUE),
+    sum(donnees_irve$prise_type_chademo == 1, na.rm = TRUE),
+    sum(donnees_irve$prise_type_autre == 1, na.rm = TRUE)
   )
 )
 
-# 2. Création du diagramme en barres
-# L'argument reorder(..., -Nombre) permet de classer les barres de la plus grande à la plus petite
 graph_prises <- ggplot(tableau_prises, aes(x = reorder(Equipement, -Nombre), y = Nombre)) +
-  geom_bar(stat = "identity", fill = "purple", color = "black", alpha = 0.8) +
-  theme_minimal() +
-  labs(title = "Répartition des types de prises sur le réseau IRVE",
-       x = "Type d'équipement",
-       y = "Nombre de points de charge équipés") +
-  # Légère inclinaison du texte de l'axe X pour une lisibilité parfaite
-  theme(axis.text.x = element_text(angle = 15, hjust = 1, size = 11))
+  geom_bar(stat = "identity", fill = "#34495e", width = 0.6) + # Gris ardoise élégant
+  # Ajout des chiffres au-dessus des barres avec formatage millier (espace)
+  geom_text(aes(label = format(Nombre, big.mark = " ")), vjust = -1, size = 4, fontface = "bold", color = "#2c3e50") +
+  theme_minimal(base_size = 12) +
+  # On étend un peu l'axe Y pour laisser de la place aux textes
+  scale_y_continuous(expand = expansion(mult = c(0, 0.15))) + 
+  labs(title = "Équipement technologique du réseau",
+       x = NULL, y = "Volume de prises installées") +
+  theme(axis.text.x = element_text(angle = 15, hjust = 1, face = "bold"),
+        plot.title = element_text(face = "bold"),
+        panel.grid.major.x = element_blank()) # Enlève les lignes verticales inutiles
 
-# Affichage du résultat dans RStudio
 print(graph_prises)
-
-# Exportation automatique au format PNG pour valider le livrable
-ggsave("repartition_types_prises.png", plot = graph_prises, width = 8, height = 6, dpi = 300)
+ggsave("repartition_types_prises_v2.png", plot = graph_prises, width = 8, height = 6, dpi = 300)

@@ -8,6 +8,7 @@ library(stringr)
 library(stringi)
 library(rnaturalearth)
 library(sf)
+library(writexl)
 # Chargement du jeu de données IRVE
 df <- read.csv("IRVE.csv")
 
@@ -59,10 +60,13 @@ print(manquants_par_colonne)
 df_clean <- df %>% filter(!is.na(puissance_nominale))
 # Suppression des colonnes très vides ou inutiles pour le consommateur
 df_clean$observations    <- NULL # 75% vierge
-df_clean$tarification    <- NULL # 75% vierge
+#df_clean$tarification    <- NULL # 75% vierge
 df_clean$siren_amenageur <- NULL # Inutile pour un consommateur et 40% manquant
 df_clean$coordonneesXY   <- NULL # Doublon de coordonnées dans un format pas intéressant
-
+df_clean$consolidated_is_code_insee_modified <- NULL
+df_clean$consolidated_is_code_insee_verified <- NULL
+df_clean$consolidated_is_lon_lat_correct <- NULL
+df_clean$id_station_local <- NULL
 # Suppression des métadonnées de la plateforme data.gouv
 df_clean <- df_clean %>% select(-c(
   datagouv_dataset_id, 
@@ -80,16 +84,9 @@ df_clean <- df_clean %>% select(-c(
 
 # Si contact aménageur vide on y injecte contact operateur 
 df_clean <- df_clean %>% 
-  mutate(nom_enseigne = ifelse(is.na(contact_amenageur) | contact_amenageur == "", 
+  mutate(contact_amenageur = ifelse(is.na(contact_amenageur) | contact_amenageur == "", 
                                contact_operateur, 
                                contact_amenageur))
-
-
-
-# Pour les colonnes textuelles, on remplace les NA restants par "Non spécifié"
-df_clean$nom_amenageur[is.na(df_clean$nom_amenageur)] <- "Non spécifié"
-df_clean$nom_operateur[is.na(df_clean$nom_operateur)] <- "Non spécifié"
-
 
 # ==============================================================================
 # 6. EXTRACTION ET RECONSTRUCTION GÉOGRAPHIQUE
@@ -127,7 +124,7 @@ df_clean <- df_clean %>%
 # ==============================================================================
 bool_cols <- c("prise_type_ef","prise_type_2","prise_type_combo_ccs",
                "prise_type_chademo","prise_type_autre","gratuit",
-               "paiement_acte","paiement_cb","reservation","station_deux_roues")
+               "paiement_acte","paiement_cb","reservation","station_deux_roues","paiement_autre")
 
 df_clean <- df_clean %>%
   mutate(across(all_of(bool_cols), ~as.integer(tolower(as.character(.)) %in% c("true","1"))))
@@ -169,7 +166,7 @@ france_metro <- st_crop(france_complete, xmin = -5.5, ymin = 41, xmax = 10, ymax
 # =================================================================
 # a. On transforme votre tableau en véritable objet spatial (des points géographiques)
 # Le "crs = 4326" indique à R qu'il s'agit de coordonnées GPS classiques.
-stations_sf <- st_as_sf(df_clean, coords = c("lon", "lat"), crs = 4326)
+stations_sf <- st_as_sf(df_clean, coords = c("consolidated_longitude", "consolidated_latitude"), crs = 4326)
 
 # b. On ne garde que les points qui sont strictement DANS le polygone France
 stations_filtrees_sf <- st_filter(stations_sf, france_metro)
@@ -181,7 +178,35 @@ df_clean <- stations_filtrees_sf %>%
     lat = st_coordinates(.)[,2]  # Récupère la latitude
   ) %>%
   st_drop_geometry() # Enlève la surcouche spatiale devenue inutile
-write.csv(df_clean, "IRVE_clean.csv", row.names = FALSE)
+
+# Charger la base La Poste
+ref_cp <- read.csv("laposte_hexasmal.csv", sep = ";")
+
+# Garder uniquement les colonnes utiles
+ref_cp <- ref_cp %>%
+  select(code_commune_insee, nom_commune, code_postal) %>%
+  distinct(code_commune_insee, .keep_all = TRUE)  # 1 ligne par code INSEE
+
+# Jointure avec df_clean
+df_clean <- df_clean %>%
+  left_join(ref_cp, by = c("code_insee_commune" = "code_commune_insee")) %>%
+  mutate(
+    consolidated_code_postal = ifelse(is.na(consolidated_code_postal), code_postal, consolidated_code_postal),
+    consolidated_commune     = ifelse(is.na(consolidated_commune), nom_commune, consolidated_commune)
+  ) %>%
+  select(-code_postal, -nom_commune)  # supprimer les colonnes temporaires de la jointure
+
+
+
+
+
+
+
+
+
+
+
+write_xlsx(df_clean, "IRVE_clean.xlsx")
 dim(df_clean)
 glimpse(df_clean)
 summary(df_clean$puissance_nominale)
@@ -191,3 +216,4 @@ bilan_manquants <- data.frame(
   Nb_Manquants = colSums(is.na(df_clean)),
   Pourcentage  = round((colSums(is.na(df_clean)) / nrow(df_clean)) * 100, 2)
 )
+sum(is.na(df$consolidated_code_postal))

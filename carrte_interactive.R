@@ -50,7 +50,7 @@ carte_interactive <- leaflet(df_final) %>%
   # Contour de la France
   addPolygons(
     data = france_metro,
-    color = "#FFC0CB",         
+    color = "#4A4A4A",         
     weight = 2,                
     opacity = 0.8,             
     fillColor = "transparent"

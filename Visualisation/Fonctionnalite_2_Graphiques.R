@@ -6,22 +6,23 @@ library(ggplot2)
 library(dplyr)
 
 # 1. Chargement de la base
-donnees_irve <- read.csv("IRVE_brouillon_100k.csv", stringsAsFactors = FALSE)
+#df_clean <- read.csv("IRVE_brouillon_100k.csv", stringsAsFactors = FALSE)
+source("BigData_groupe8/Nettoyage/main.R")
 
 # ------------------------------------------------------------------------------
 # RUSTINE DE NETTOYAGE : Correction du piège des Watts vs KiloWatts
 # Objectif : Ramener les volumes à l'échelle de la France entière
 # ------------------------------------------------------------------------------
-donnees_irve <- donnees_irve %>%
-  mutate(puissance_nominale = ifelse(puissance_nominale > 1000, puissance_nominale / 1000, puissance_nominale)) %>%
-  filter(puissance_nominale <= 350 & puissance_nominale > 0)
+# df_clean <- df_clean %>%
+#   mutate(puissance_nominale = ifelse(puissance_nominale > 1000, puissance_nominale / 1000, puissance_nominale)) %>%
+#   filter(puissance_nominale <= 350 & puissance_nominale > 0)
 
 # ==============================================================================
 # GRAPHIQUE 1 : PARTS DE MARCHÉ (Méthode de l'Annotation Explicite)
 # ==============================================================================
 
 # 1. On calcule d'abord qui sont les 10 plus gros opérateurs
-top_operateurs <- donnees_irve %>%
+top_operateurs <- df_clean %>%
   filter(!is.na(nom_operateur) & nom_operateur != "") %>% 
   group_by(nom_operateur) %>%
   summarise(n = n()) %>%
@@ -29,7 +30,7 @@ top_operateurs <- donnees_irve %>%
   pull(nom_operateur)
 
 # 2. On prépare les données pour ces 10 opérateurs
-df_top10 <- donnees_irve %>%
+df_top10 <- df_clean %>%
   filter(nom_operateur %in% top_operateurs) %>%
   mutate(gratuit = ifelse(gratuit == 1, "Gratuit", "Payant")) %>%
   group_by(nom_operateur, gratuit) %>%
@@ -66,7 +67,7 @@ ggsave("parts_marche_operateurs_finale.png", plot = graph_operateurs, width = 10
 # ==============================================================================
 # GRAPHIQUE 2 : RÉPARTITION DES PUISSANCES (Axes ultra-explicites)
 # ==============================================================================
-df_puissance_agg <- donnees_irve %>%
+df_puissance_agg <- df_clean %>%
   filter(implantation_station %in% c("Parking public", "Voirie", "Station dédiée à la recharge rapide")) %>%
   filter(!is.na(puissance_nominale)) %>%
   mutate(categorie_puissance = case_when(
@@ -102,7 +103,7 @@ ggsave("repartition_puissances_finale.png", plot = graph_puissance, width = 11, 
 # ==============================================================================
 # GRAPHIQUE 3 : ÉVOLUTION TEMPORELLE
 # ==============================================================================
-evolution_stations <- donnees_irve %>%
+evolution_stations <- df_clean %>%
   filter(!is.na(date_mise_en_service) & date_mise_en_service != "") %>%
   mutate(date_propre = as.Date(substr(date_mise_en_service, 1, 10), format="%Y-%m-%d")) %>%
   filter(date_propre >= as.Date("2015-01-01") & date_propre <= as.Date("2026-05-31")) %>%
@@ -131,11 +132,11 @@ ggsave("evolution_mises_en_service_finale.png", plot = graph_evolution, width = 
 tableau_prises <- data.frame(
   Equipement = c("Type 2 (Standard AC)", "Combo CCS (Rapide DC)", "Prise Domestique", "CHAdeMO", "Autre"),
   Nombre = c(
-    sum(donnees_irve$prise_type_2 == 1, na.rm = TRUE),
-    sum(donnees_irve$prise_type_combo_ccs == 1, na.rm = TRUE),
-    sum(donnees_irve$prise_type_ef == 1, na.rm = TRUE),
-    sum(donnees_irve$prise_type_chademo == 1, na.rm = TRUE),
-    sum(donnees_irve$prise_type_autre == 1, na.rm = TRUE)
+    sum(df_clean$prise_type_2 == 1, na.rm = TRUE),
+    sum(df_clean$prise_type_combo_ccs == 1, na.rm = TRUE),
+    sum(df_clean$prise_type_ef == 1, na.rm = TRUE),
+    sum(df_clean$prise_type_chademo == 1, na.rm = TRUE),
+    sum(df_clean$prise_type_autre == 1, na.rm = TRUE)
   )
 )
 
@@ -152,29 +153,28 @@ graph_prises <- ggplot(tableau_prises, aes(x = reorder(Equipement, -Nombre), y =
 
 print(graph_prises)
 ggsave("repartition_types_prises_finale.png", plot = graph_prises, width = 8, height = 6, dpi = 300)
-=======
 # Chargement des bibliothèques nécessaires pour la Fonctionnalité 2 de graphique 
 library(ggplot2)
 library(dplyr)
 
 # Importation temporaire du fichier brut en attendant le nettoyage de Victor 
-donnees_irve <- read.csv("IRVE.csv", sep=",", stringsAsFactors=TRUE)
+df_clean <- read.csv("IRVE.csv", sep=",", stringsAsFactors=TRUE)
 
 # Commande pour voir le taux de valeurs manquantes par colonne (en %) a metttre dans fonction 1 
-sapply(donnees_irve, function(x) sum(is.na(x) | x == "") / nrow(donnees_irve) * 100)
+sapply(df_clean, function(x) sum(is.na(x) | x == "") / nrow(df_clean) * 100)
 
 # Nombre de données qu'on a en tout 
-dim(donnees_irve)
+dim(df_clean)
 
 # Pour lister les données 
-names(donnees_irve)
+names(df_clean)
 
 # --- DEBUT DES GRAPHIQUES ---
 
 # --- 1. PARTS DE MARCHÉ DES OPÉRATEURS ---
 
 # Création d'un sous-tableau avec le Top 10 des opérateurs. 
-  top_operateurs <- donnees_irve %>%
+  top_operateurs <- df_clean %>%
   filter(nom_operateur != "") %>%   # Pour faire le nettoyage de la case vide 4276 en attendant les données parfaitement traités
   count(nom_operateur) %>%
   top_n(10, n) %>%
@@ -202,10 +202,10 @@ ggsave("parts_marche_operateurs.png", plot = graph_operateurs, width = 8, height
 
 # Sécurité : on s'assure que la colonne est bien lue comme un format numérique
 # A supprimer si les donnees nettoyer en fonctionnalités 1 sont bien traités 
-  donnees_irve$puissance_nominale <- as.numeric(as.character(donnees_irve$puissance_nominale))
+  df_clean$puissance_nominale <- as.numeric(as.character(df_clean$puissance_nominale))
 
 # Création de l'histogramme
-  graph_puissance <- ggplot(donnees_irve, aes(x = puissance_nominale)) +
+  graph_puissance <- ggplot(df_clean, aes(x = puissance_nominale)) +
     
   # On limite l'axe X (ex: 0 à 350 kW) pour éviter que les valeurs aberrantes n'écrasent le graphique
   geom_histogram(fill = "darkorange", color = "black", binwidth = 22) +
@@ -227,7 +227,7 @@ ggsave("repartition_puissances.png", plot = graph_puissance, width = 8, height =
 # --- 3. ÉVOLUTION TEMPORELLE DES MISES EN SERVICE ---
 
 # 1. Préparation et nettoyage des données temporelles
-evolution_stations <- donnees_irve %>%
+evolution_stations <- df_clean %>%
   
   # Sécurité : on force la conversion en texte pour éviter les erreurs de format (Facteurs)
   mutate(date_texte = as.character(date_mise_en_service)) %>%
@@ -290,11 +290,11 @@ ggsave("evolution_mises_en_service.png", plot = graph_evolution, width = 10, hei
 tableau_prises <- data.frame(
   Equipement = c("Type 2 (Standard)", "Prise Domestique (EF)", "Combo CCS (Rapide)", "CHAdeMO", "Autre"),
   Nombre = c(
-    sum(donnees_irve$prise_type_2 %in% c("True", "TRUE", "true", 1, TRUE), na.rm = TRUE),
-    sum(donnees_irve$prise_type_ef %in% c("True", "TRUE", "true", 1, TRUE), na.rm = TRUE),
-    sum(donnees_irve$prise_type_combo_ccs %in% c("True", "TRUE", "true", 1, TRUE), na.rm = TRUE),
-    sum(donnees_irve$prise_type_chademo %in% c("True", "TRUE", "true", 1, TRUE), na.rm = TRUE),
-    sum(donnees_irve$prise_type_autre %in% c("True", "TRUE", "true", 1, TRUE), na.rm = TRUE)
+    sum(df_clean$prise_type_2 %in% c("True", "TRUE", "true", 1, TRUE), na.rm = TRUE),
+    sum(df_clean$prise_type_ef %in% c("True", "TRUE", "true", 1, TRUE), na.rm = TRUE),
+    sum(df_clean$prise_type_combo_ccs %in% c("True", "TRUE", "true", 1, TRUE), na.rm = TRUE),
+    sum(df_clean$prise_type_chademo %in% c("True", "TRUE", "true", 1, TRUE), na.rm = TRUE),
+    sum(df_clean$prise_type_autre %in% c("True", "TRUE", "true", 1, TRUE), na.rm = TRUE)
   )
 )
 
@@ -314,3 +314,5 @@ print(graph_prises)
 
 # Exportation automatique au format PNG pour valider le livrable
 ggsave("repartition_types_prises.png", plot = graph_prises, width = 8, height = 6, dpi = 300)
+
+

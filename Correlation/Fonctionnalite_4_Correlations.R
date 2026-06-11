@@ -5,14 +5,16 @@
 library(dplyr)
 library(ggplot2)
 
+source("BigData_groupe8/Nettoyage/main.R")
 # 1. Chargement et nettoyage de survie (Watts -> kW)
-donnees_irve <- read.csv("IRVE_brouillon_100k.csv", stringsAsFactors = FALSE) %>%
-  mutate(puissance_nominale = ifelse(puissance_nominale > 1000, puissance_nominale / 1000, puissance_nominale)) %>%
-  filter(puissance_nominale <= 350 & puissance_nominale > 0)
+# donnees_irve <- read.csv("IRVE_brouillon_100k.csv", stringsAsFactors = FALSE) %>%
+#   mutate(puissance_nominale = ifelse(puissance_nominale > 1000, puissance_nominale / 1000, puissance_nominale)) %>%
+#   filter(puissance_nominale <= 350 & puissance_nominale > 0)
 
 # 2. Préparation des données pour l'algorithme de corrélation
 # On convertit tout en chiffres (1 = Oui, 0 = Non) car la matrice ne lit pas le texte
-df_cor <- donnees_irve %>%
+
+df_cor <- df_clean %>%
   filter(!is.na(puissance_nominale), !is.na(nbre_pdc)) %>%
   mutate(
     Puissance_kW = puissance_nominale,

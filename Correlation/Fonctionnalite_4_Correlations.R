@@ -5,21 +5,21 @@
 library(dplyr)
 library(ggplot2)
 
-# 1. Chargement et nettoyage de survie (Watts -> kW)
-donnees_irve <- read.csv("IRVE_brouillon_100k.csv", stringsAsFactors = FALSE) %>%
-  mutate(puissance_nominale = ifelse(puissance_nominale > 1000, puissance_nominale / 1000, puissance_nominale)) %>%
-  filter(puissance_nominale <= 350 & puissance_nominale > 0)
+# 1. Connexion au pipeline de nettoyage (Source Unique de Vérité)
+# On s'assure d'utiliser exactement la même base (df_clean) que la F2
+source("BigData_groupe8/Nettoyage/main.R")
 
 # 2. Préparation des données pour l'algorithme de corrélation
 # On convertit tout en chiffres (1 = Oui, 0 = Non) car la matrice ne lit pas le texte
-df_cor <- donnees_irve %>%
+df_cor <- df_clean %>%
   filter(!is.na(puissance_nominale), !is.na(nbre_pdc)) %>%
   mutate(
     Puissance_kW = puissance_nominale,
     Nbre_Prises = as.numeric(nbre_pdc),
-    Est_Gratuit = as.numeric(gratuit),
-    Prise_Rapide_DC = as.numeric(prise_type_combo_ccs),
-    Prise_Standard_AC = as.numeric(prise_type_2)
+    # Conversion robuste du texte/booléen en 1 et 0
+    Est_Gratuit = ifelse(gratuit %in% c("Gratuit", "VRAI", "true", "TRUE", "1"), 1, 0),
+    Prise_Rapide_DC = ifelse(prise_type_combo_ccs %in% c("VRAI", "true", "TRUE", "1"), 1, 0),
+    Prise_Standard_AC = ifelse(prise_type_2 %in% c("VRAI", "true", "TRUE", "1"), 1, 0)
   ) %>%
   # On sélectionne uniquement les colonnes qu'on veut comparer
   select(Puissance_kW, Nbre_Prises, Est_Gratuit, Prise_Rapide_DC, Prise_Standard_AC) %>%

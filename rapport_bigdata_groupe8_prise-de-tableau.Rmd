@@ -132,7 +132,9 @@ ggplot(df_clean, aes(x = puissance_nominale)) +
 
 ## Stratégies de nettoyage appliquées
 
-```{r tableau_strategies}
+```{r tableau_strategies, warning=FALSE, message=FALSE}
+library(kableExtra)
+
 strategies <- data.frame(
   `Étape` = c("1", "2", "3", "4"),
   `Script` = c(
@@ -155,9 +157,18 @@ strategies <- data.frame(
   ),
   check.names = FALSE
 )
+
+# On dessine le tableau en forçant la largeur de chaque colonne
 knitr::kable(strategies,
              caption = "Pipeline de nettoyage en 4 étapes",
-             align   = c("c","l","l","l"))
+             format = "latex",
+             booktabs = TRUE,
+             align = c("c", "l", "l", "l")) %>%
+  kable_styling(latex_options = "hold_position") %>%
+  column_spec(1, width = "1cm") %>%
+  column_spec(2, width = "3.5cm") %>%
+  column_spec(3, width = "5.5cm") %>%
+  column_spec(4, width = "5cm")
 ```
 
 > **Choix architectural – Pipeline séquentiel avec checkpoints :**

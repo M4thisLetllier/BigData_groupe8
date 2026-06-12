@@ -15,7 +15,7 @@ df_etude_op <- df_clean %>%
 # Identifier les 15 opérateurs ayant le plus de bornes dans notre jeu de données
 top_operateurs <- df_etude_op %>%
   count(nom_operateur, sort = TRUE) %>%
-  top_n(15, n) %>%
+  top_n(10, n) %>%
   pull(nom_operateur)
 
 # Filtrer le dataset pour ne garder QUE ces 15 gros opérateurs
@@ -45,11 +45,9 @@ graphique_operateur <- ggplot(df_top_op, aes(
   theme_minimal() +
   theme(legend.position = "none") + # On masque la légende inutile
   labs(
-    title = "Politique tarifaire selon l'opérateur (Top 15)",
-    subtitle = "Distribution du tarif au kWh pour les principaux réseaux français",
+    title = "Politique tarifaire selon l'opérateur (Top 10)",
     x = "Nom de l'opérateur",
     y = "Tarif (€/kWh)",
-    caption = "Note : Le graphique est tronqué à 1.00€/kWh pour une lisibilité optimale."
   )
 
 print(graphique_operateur)

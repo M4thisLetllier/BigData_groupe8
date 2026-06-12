@@ -1,6 +1,6 @@
 #Mathis et Gemini
 
-source("BigData_groupe8/Nettoyage/main.R")
+source("Nettoyage/main.R")
 
 library(dplyr)
 library(ggplot2)

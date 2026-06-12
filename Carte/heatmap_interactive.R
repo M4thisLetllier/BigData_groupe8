@@ -5,7 +5,7 @@ library(leaflet.extras)
 library(rnaturalearth)
 library(sf)
 
-source("BigData_groupe8/Nettoyage/main.R")
+source("Nettoyage/main.R")
 
 #On récupère le coutour de la France
 france_complete <- ne_countries(scale = "medium", country = "France", returnclass = "sf")

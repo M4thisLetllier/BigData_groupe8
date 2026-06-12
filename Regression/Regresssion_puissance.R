@@ -1,12 +1,16 @@
+#==>Victor et Claude
+
 # ==============================================================================
 # F5 : RÉGRESSION LINÉAIRE MULTIPLE 
 # ==============================================================================
 
 library(dplyr)
 
+source("Nettoyage/main.R")
+
 # 1. Nettoyage et préparation ciblée
 # On crée un sous-ensemble propre, sans NA, uniquement avec la cible et les prédicteurs forts
-df_regression <- df_cor %>%
+df_regression <- df_clean %>%
   select(Puissance_kW, Prise_Rapide_DC, Nbre_Prises, Tarif_kWh) %>%
   na.omit() # On s'assure qu'aucune donnée manquante ne fasse planter le calcul
 

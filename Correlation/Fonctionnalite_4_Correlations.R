@@ -9,11 +9,10 @@ library(dplyr)
 library(ggplot2)
 
 # 1. Connexion au pipeline de nettoyage
-source("BigData_groupe8/Nettoyage/main.R")
+source("Nettoyage/main.R")
 
 # 2. Préparation des données pour l'algorithme de corrélation
 df_cor <- df_clean %>%
-<<<<<<< HEAD
   filter(!is.na(puissance_nominale), !is.na(nbre_pdc)) %>%
   mutate(
     Puissance_kW = puissance_nominale,
@@ -39,7 +38,6 @@ df_cor <- df_clean %>%
 # 3. Calcul mathématique de la matrice (Corrélation de Pearson)
 # L'argument pairwise.complete.obs est CRUCIAL ici à cause des NA du Tarif_kWh !
 matrice <- cor(df_cor, use = "pairwise.complete.obs")
-=======
   # On garde UNIQUEMENT les colonnes qui sont des nombres (ou des 0/1)
   select(where(is.numeric)) %>%
   
@@ -59,8 +57,6 @@ matrice <- cor(df_cor, use = "pairwise.complete.obs")
 # plutôt que de faire planter tout le calcul de la colonne.
 matrice <- cor(df_cor, use = "pairwise.complete.obs")
 
->>>>>>> 5ecf0b252a2fd24b550537a8f559a52a46c64a8b
-
 # 4. Formatage des données pour dessiner la carte de chaleur
 matrice_longue <- as.data.frame(as.table(matrice))
 
@@ -70,7 +66,6 @@ matrice_longue <- as.data.frame(as.table(matrice))
 # ==============================================================================
 graph_matrice <- ggplot(matrice_longue, aes(x = Var1, y = Var2, fill = Freq)) +
   geom_tile(color = "white", linewidth = 1) +
-<<<<<<< HEAD
   scale_fill_gradient2(low = "#e74c3c", high = "#2980b9", mid = "white", 
                        midpoint = 0, limit = c(-1,1), space = "Lab", 
                        name="Score de\nCorrélation") +
@@ -119,7 +114,6 @@ mosaicplot(tableau_mosaic,
 
 # 5. Fermeture et validation de la sauvegarde
 dev.off()
-=======
   scale_fill_gradient2(
     low = "#e74c3c", high = "#2980b9", mid = "white", 
     midpoint = 0, limit = c(-1,1), space = "Lab", 
@@ -142,4 +136,4 @@ dev.off()
   )
 
 print(graph_matrice)
->>>>>>> 5ecf0b252a2fd24b550537a8f559a52a46c64a8b
+

@@ -1,3 +1,5 @@
+#==>Joas et gemini
+
 # ==============================================================================
 # FONCTIONNALITÉ 2 : VISUALISATION GRAPHIQUE (VERSION FINALE PRODUCTION)
 # ==============================================================================
@@ -6,7 +8,7 @@ library(ggplot2)
 library(dplyr)
 
 # 1. Connexion au pipeline de nettoyage (Source Unique de Vérité)
-source("BigData_groupe8/Nettoyage/main.R")
+source("Nettoyage/main.R")
 
 # Ligne de contrôle pour vérifier l'intégrité de la base unifiée (~70k attendues)
 cat("[INFO] Pipeline exécuté. Base de données synchronisée :", nrow(df_clean), "observations.\n")

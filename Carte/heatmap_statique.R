@@ -3,7 +3,7 @@
 # Chargement des bibliothèques
 library(ggplot2)
 
-source("BigData_groupe8/Nettoyage/main.R")
+source("Nettoyage/main.R")
 
 df_clean <- df %>%
   filter(!is.na(consolidated_longitude) & !is.na(consolidated_latitude)) %>%

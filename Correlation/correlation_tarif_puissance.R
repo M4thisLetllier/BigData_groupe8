@@ -7,7 +7,7 @@
 library(dplyr)
 library(ggplot2)
 
-source("BigData_groupe8/Nettoyage/main.R")
+source("Nettoyage/main.R")
 # ---------------------------------------------------------
 #L'étude statistique
 # ---------------------------------------------------------

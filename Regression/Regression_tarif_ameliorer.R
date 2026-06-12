@@ -1,3 +1,5 @@
+#Mathis Gemini
+
 # Chargement des bibliothèques
 library(dplyr)
 library(forcats) # Indispensable pour regrouper le texte proprement
@@ -5,6 +7,7 @@ library(forcats) # Indispensable pour regrouper le texte proprement
 # ==============================================================================
 # 1. PRÉPARATION DU DATASET AVEC VARIABLES CATÉGORIELLES
 # ==============================================================================
+source("Nettoyage/main.R")
 df_ml <- df_clean %>%
   filter(
     !is.na(tarif_kwh_clean), 

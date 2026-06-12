@@ -5,6 +5,7 @@ source("BigData_groupe8/Nettoyage/main.R")
 library(dplyr)
 library(ggplot2)
 
+
 # ---------------------------------------------------------
 # ÉTAPE 1 : Préparation et filtrage (Exclusion des inconnus)
 # ---------------------------------------------------------
@@ -52,3 +53,38 @@ graphique_pmr <- ggplot(df_chi2_pmr, aes(x = implantation_station, fill = access
   )
 
 print(graphique_pmr)
+
+# ---------------------------------------------------------
+# ÉTAPE 4 : La visualisation (Mosaic Plot)
+# ---------------------------------------------------------
+df_mosaic <- df_clean %>%
+  filter(
+    !is.na(implantation_station) & implantation_station != "",
+    !is.na(accessibilite_pmr) & accessibilite_pmr != "Accessibilité inconnue"
+  ) %>%
+    mutate(
+      # On remplace les longues phrases par des "tags" courts
+      implantation_courte = case_when(
+        implantation_station == "Parking privé à usage public"       ~ "Privé (Public)",
+        implantation_station == "Parking privé réservé à la clientèle" ~ "Privé (Client)",
+        implantation_station == "Station dédiée à la recharge rapide"  ~ "Station Rapide",
+        TRUE ~ implantation_station # Laisse "Voirie" et "Parking public" tels quels
+      )
+  )
+
+# On crée le tableau de contingence avec la NOUVELLE colonne
+tableau_pmr_mosaic <- table(df_mosaic$implantation_courte, df_mosaic$accessibilite_pmr)
+
+# On augmente un peu la marge du haut (3ème chiffre) pour laisser la place aux lignes
+par(mar = c(4, 12, 6, 2)) 
+
+# On trace le mosaic plot
+
+mosaicplot(
+  tableau_pmr_mosaic,
+  main = "Accessibilité PMR selon l'implantation",
+  xlab = "Type d'implantation (Largeur = Volume de bornes)",
+  ylab = "Statut PMR",
+  color = c("#f1c40f", "#e74c3c", "#2ecc71"), 
+  las = 2, 
+  cex.axis = 0.8)

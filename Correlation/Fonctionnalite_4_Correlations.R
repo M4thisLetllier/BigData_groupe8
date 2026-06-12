@@ -10,6 +10,7 @@ source("BigData_groupe8/Nettoyage/main.R")
 
 # 2. Préparation des données pour l'algorithme de corrélation
 df_cor <- df_clean %>%
+<<<<<<< HEAD
   filter(!is.na(puissance_nominale), !is.na(nbre_pdc)) %>%
   mutate(
     Puissance_kW = puissance_nominale,
@@ -35,13 +36,38 @@ df_cor <- df_clean %>%
 # 3. Calcul mathématique de la matrice (Corrélation de Pearson)
 # L'argument pairwise.complete.obs est CRUCIAL ici à cause des NA du Tarif_kWh !
 matrice <- cor(df_cor, use = "pairwise.complete.obs")
+=======
+  # On garde UNIQUEMENT les colonnes qui sont des nombres (ou des 0/1)
+  select(where(is.numeric)) %>%
+  
+  # On supprime toutes les coordonnées GPS (lon, lat) comme demandé
+  select(
+    -starts_with("lon"), 
+    -starts_with("lat"),
+    -starts_with("consolidated_lon"), 
+    -starts_with("consolidated_lat"),
+    -contains("code_postal"), # On enlève le CP si jamais il a été converti en nombre
+    -contains("insee")        # Pareil pour le code insee
+  )
+
+
+# 3. Calcul mathématique de la matrice (Corrélation de Pearson)
+# ASTUCE 1 : 'use = "pairwise.complete.obs"' force R à ignorer les cases vides 
+# plutôt que de faire planter tout le calcul de la colonne.
+matrice <- cor(df_cor, use = "pairwise.complete.obs")
+
+>>>>>>> 5ecf0b252a2fd24b550537a8f559a52a46c64a8b
 
 # 4. Formatage des données pour dessiner la carte de chaleur
 matrice_longue <- as.data.frame(as.table(matrice))
 
+
+# ==============================================================================
 # 5. Création de la Heatmap (Carte de Chaleur)
+# ==============================================================================
 graph_matrice <- ggplot(matrice_longue, aes(x = Var1, y = Var2, fill = Freq)) +
   geom_tile(color = "white", linewidth = 1) +
+<<<<<<< HEAD
   scale_fill_gradient2(low = "#e74c3c", high = "#2980b9", mid = "white", 
                        midpoint = 0, limit = c(-1,1), space = "Lab", 
                        name="Score de\nCorrélation") +
@@ -90,3 +116,27 @@ mosaicplot(tableau_mosaic,
 
 # 5. Fermeture et validation de la sauvegarde
 dev.off()
+=======
+  scale_fill_gradient2(
+    low = "#e74c3c", high = "#2980b9", mid = "white", 
+    midpoint = 0, limit = c(-1,1), space = "Lab", 
+    name="Score de\nCorrélation",
+    na.value = "grey90" # ASTUCE 2 : Colorie en gris clair les cases impossibles à calculer (NA)
+  ) +
+  # ASTUCE 3 : na.rm = TRUE empêche l'apparition du message d'erreur rouge dans la console
+  geom_text(aes(label = round(Freq, 2)), color = "black", fontface = "bold", size = 5, na.rm = TRUE) +
+  
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1, face="bold"),
+    axis.text.y = element_text(face="bold"),
+    axis.title = element_blank(),
+    plot.title = element_text(face = "bold", size = 16)
+  ) +
+  labs(
+    title = "Matrice de Corrélation : Identification des variables clés",
+    subtitle = "Évaluation de l'impact des variables pour le modèle de Machine Learning"
+  )
+
+print(graph_matrice)
+>>>>>>> 5ecf0b252a2fd24b550537a8f559a52a46c64a8b
